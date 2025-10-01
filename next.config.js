@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  basePath: '/avoider',
+  images: {
+    unoptimized: true,
+  },
   reactStrictMode: true,
   webpack: (config) => {
     // Phaser requires special webpack configuration for proper bundling
