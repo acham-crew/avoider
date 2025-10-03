@@ -51,7 +51,9 @@ export class PreloaderScene extends Phaser.Scene {
     });
 
     // Load player sprite sheet (256x256 image, 8x8 grid = 32x32 per frame)
-    this.load.spritesheet('player', '/player-spritesheet.png', {
+    // Use basePath for GitHub Pages
+    const basePath = process.env.NODE_ENV === 'production' ? '/avoider' : '';
+    this.load.spritesheet('player', `${basePath}/player-spritesheet.png`, {
       frameWidth: 32,
       frameHeight: 32,
     });
