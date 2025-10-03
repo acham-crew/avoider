@@ -8,6 +8,27 @@ export const GAME_CONFIG = {
   // Physics
   gravity: 0,
 
+  // Sprite sizes (original sprite size from assets)
+  spriteSize: {
+    player: 32,      // Original player sprite is 32x32
+    giwa: 50,        // Giwa tile width (height is auto from sprite)
+    item: 30,        // Item sprite size
+  },
+
+  // Display sizes (how big sprites appear on screen)
+  displaySize: {
+    player: 40,      // Player display size (original = 32, use 40 for slight upscale)
+    giwa: 50,        // Giwa display size
+    item: 30,        // Item display size
+  },
+
+  // Hitbox size multipliers (percentage of display size)
+  hitboxMultiplier: {
+    player: 0.6,     // Player hitbox is 60% of display size (more forgiving)
+    giwa: 0.7,       // Giwa hitbox is 70% of display size
+    item: 0.8,       // Item hitbox is 80% of display size (easier to collect)
+  },
+
   // Player
   playerSpeed: 300,
   playerSpeedBoosted: 450,
@@ -21,9 +42,9 @@ export const GAME_CONFIG = {
   fallSpeedIncrease: 3, // per second
 
   // Items
-  itemSpawnChance: 0.2, // 20% chance of item instead of tile
+  itemSpawnChance: 0.15, // 15% chance of item instead of tile
   itemScores: {
-    chest: 500,
+    chest: 20, // Chest gives 20 points
   },
 
   // Power-up durations (milliseconds)
@@ -35,9 +56,13 @@ export const GAME_CONFIG = {
   slowMotionFactor: 0.8, // 20% slower
 
   // Scoring
-  scorePerTick: 10, // points per game tick (at 60Hz, this is ~600 points/sec)
-  comboThreshold: 3,
-  comboBonus: 200,
+  scorePerTick: 0.1, // Base score: 0.1 point per tick (6 points/sec at 60Hz)
+
+  // Near-miss combo system
+  nearMissDistance: 60, // Distance threshold for near-miss detection (pixels)
+  nearMissBaseScore: 5, // Base score for a near-miss
+  nearMissComboMultiplier: 2, // Score multiplier per combo level
+  nearMissComboWindow: 2000, // 2 seconds to maintain combo (milliseconds)
 
   // Patterns
   patternInterval: 20000, // Change pattern every 20 seconds

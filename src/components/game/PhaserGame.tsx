@@ -40,11 +40,10 @@ export default function PhaserGame() {
       id="game-container"
       style={{
         width: '100%',
-        height: '100vh',
+        height: '100%',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#000000',
       }}
     />
   );

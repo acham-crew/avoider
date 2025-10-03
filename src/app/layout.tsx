@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'GIWA Dodge - Avoid the Falling Tiles',
-  description: 'A retro-style arcade game where you dodge falling Korean roof tiles',
+  title: 'GIWA Dodge - A Web3 Arcade Game',
+  description: 'Dodge falling Korean roof tiles and earn points!',
 }
 
 export default function RootLayout({
@@ -12,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body style={{ margin: 0, padding: 0, overflow: 'hidden' }}>
+      <body>
         {children}
       </body>
     </html>

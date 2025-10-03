@@ -11,7 +11,7 @@ export default function ScoreDisplay() {
   return (
     <div
       style={{
-        position: 'fixed',
+        position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
@@ -20,7 +20,7 @@ export default function ScoreDisplay() {
         color: 'white',
         fontFamily: 'monospace',
         fontSize: '20px',
-        zIndex: 100,
+        zIndex: 10,
         pointerEvents: 'none',
       }}
     >
