@@ -1,0 +1,168 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  스프라이트 시트 예제 레이아웃
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 단일 행 레이아웃 (가장 간단)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+파일명: player-spritesheet.png
+크기: 512x64 픽셀 (64x64 프레임 8개)
+
+┌────────┬────────┬────────┬────────┬────────┬────────┬────────┬────────┐
+│ idle 1 │ idle 2 │ move 1 │ move 2 │ move 3 │ move 4 │ move 5 │ move 6 │
+│  64x64 │  64x64 │  64x64 │  64x64 │  64x64 │  64x64 │  64x64 │  64x64 │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+
+코드:
+this.load.spritesheet('player', '/assets/game/player-spritesheet.png', {
+  frameWidth: 64,
+  frameHeight: 64
+});
+
+this.anims.create({
+  key: 'player-idle',
+  frames: this.anims.generateFrameNumbers('player', { start: 0, end: 1 }),
+  frameRate: 6,
+  repeat: -1
+});
+
+this.anims.create({
+  key: 'player-move',
+  frames: this.anims.generateFrameNumbers('player', { start: 2, end: 7 }),
+  frameRate: 12,
+  repeat: -1
+});
+
+
+2. 그리드 레이아웃 (더 많은 애니메이션)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+파일명: player-spritesheet.png
+크기: 256x192 픽셀 (64x64 프레임 4x3)
+
+┌────────┬────────┬────────┬────────┐
+│ idle 1 │ idle 2 │ idle 3 │ idle 4 │  ← 1행 (프레임 0-3)
+├────────┼────────┼────────┼────────┤
+│ left 1 │ left 2 │ left 3 │ left 4 │  ← 2행 (프레임 4-7)
+├────────┼────────┼────────┼────────┤
+│right 1 │right 2 │right 3 │right 4 │  ← 3행 (프레임 8-11)
+└────────┴────────┴────────┴────────┘
+
+코드:
+this.load.spritesheet('player', '/assets/game/player-spritesheet.png', {
+  frameWidth: 64,
+  frameHeight: 64
+});
+
+this.anims.create({
+  key: 'player-idle',
+  frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+  frameRate: 8,
+  repeat: -1
+});
+
+this.anims.create({
+  key: 'player-move-left',
+  frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
+  frameRate: 12,
+  repeat: -1
+});
+
+this.anims.create({
+  key: 'player-move-right',
+  frames: this.anims.generateFrameNumbers('player', { start: 8, end: 11 }),
+  frameRate: 12,
+  repeat: -1
+});
+
+
+3. 좌우 반전 방식 (이미지 절반으로 줄이기)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+파일명: player-spritesheet.png
+크기: 256x128 픽셀 (64x64 프레임 4x2)
+
+┌────────┬────────┬────────┬────────┐
+│ idle 1 │ idle 2 │ idle 3 │ idle 4 │  ← 대기 애니메이션
+├────────┼────────┼────────┼────────┤
+│ move 1 │ move 2 │ move 3 │ move 4 │  ← 이동 (좌우 반전으로 재사용)
+└────────┴────────┴────────┴────────┘
+
+코드:
+// PreloaderScene.ts
+this.load.spritesheet('player', '/assets/game/player-spritesheet.png', {
+  frameWidth: 64,
+  frameHeight: 64
+});
+
+this.anims.create({
+  key: 'player-idle',
+  frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+  frameRate: 8,
+  repeat: -1
+});
+
+this.anims.create({
+  key: 'player-move',
+  frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
+  frameRate: 12,
+  repeat: -1
+});
+
+// Player.ts - 좌우 반전으로 방향 처리
+if (isMovingLeft) {
+  this.setFlipX(true);   // 좌우 반전
+  this.play('player-move', true);
+} else if (isMovingRight) {
+  this.setFlipX(false);  // 원래대로
+  this.play('player-move', true);
+} else {
+  this.play('player-idle', true);
+}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  추천 도구
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Piskel (무료, 온라인)
+   https://www.piskelapp.com/
+   - 픽셀 아트 전용
+   - 스프라이트 시트 자동 생성
+   - 초보자 친화적
+
+2. Aseprite (유료, $19.99)
+   https://www.aseprite.org/
+   - 전문가용 픽셀 아트 도구
+   - 강력한 애니메이션 기능
+
+3. LibreSprite (무료)
+   https://libresprite.github.io/
+   - Aseprite의 무료 오픈소스 버전
+
+4. Photoshop / GIMP
+   - 일반 이미지 편집기로도 제작 가능
+   - 타임라인 기능 사용
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  무료 스프라이트 시트 다운로드
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- OpenGameArt: https://opengameart.org/
+- itch.io: https://itch.io/game-assets/free/tag-sprites
+- Kenney: https://kenney.nl/assets (픽셀 아트)
+- Craftpix: https://craftpix.net/freebies/
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  중요 체크리스트
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ 모든 프레임이 동일한 크기인가?
+✓ 프레임 사이에 여백이 없는가?
+✓ PNG 투명 배경인가?
+✓ frameWidth, frameHeight 값이 정확한가?
+✓ 프레임 번호(start, end)가 올바른가?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

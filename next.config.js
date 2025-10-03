@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  basePath: '/avoider',
+  // Only use basePath in production (GitHub Pages)
+  basePath: process.env.NODE_ENV === 'production' ? '/avoider' : '',
   images: {
     unoptimized: true,
   },

@@ -45,7 +45,18 @@ export class PreloaderScene extends Phaser.Scene {
       percentText.destroy();
     });
 
-    // Create simple graphics for game objects since we don't have image assets
+    // Error handling
+    this.load.on('loaderror', (file: any) => {
+      console.error('Error loading file:', file.key, file.url);
+    });
+
+    // Load player sprite sheet (256x256 image, 8x8 grid = 32x32 per frame)
+    this.load.spritesheet('player', '/player-spritesheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+
+    // Create simple graphics for other game objects
     this.createPlaceholderGraphics();
   }
 
@@ -53,12 +64,8 @@ export class PreloaderScene extends Phaser.Scene {
    * Create simple placeholder graphics for the game objects
    */
   private createPlaceholderGraphics() {
-    // Player - blue square
-    const playerGraphics = this.add.graphics();
-    playerGraphics.fillStyle(0x00bfff, 1);
-    playerGraphics.fillRect(0, 0, 40, 40);
-    playerGraphics.generateTexture('player', 40, 40);
-    playerGraphics.destroy();
+    // Player sprite sheet is loaded from file, no need to generate
+    // Skip player graphic generation
 
     // Giwa - red tile with "瓦" character
     const giwaGraphics = this.add.graphics();
@@ -108,7 +115,67 @@ export class PreloaderScene extends Phaser.Scene {
   }
 
   create() {
+    // Check if player sprite sheet loaded successfully
+    if (this.textures.exists('player')) {
+      console.log('✅ Player sprite sheet loaded successfully');
+      // Create player animations
+      this.createPlayerAnimations();
+    } else {
+      console.error('❌ Player sprite sheet failed to load, using fallback');
+      // Create fallback graphic
+      const playerGraphics = this.add.graphics();
+      playerGraphics.fillStyle(0x00bfff, 1);
+      playerGraphics.fillRect(0, 0, 40, 40);
+      playerGraphics.generateTexture('player', 40, 40);
+      playerGraphics.destroy();
+    }
+
     // Start the main game scene
     this.scene.start('GameScene');
+  }
+
+  /**
+   * Create animations from the player sprite sheet
+   */
+  private createPlayerAnimations() {
+    // IDLE animation - Row 0, frames 0-3
+    this.anims.create({
+      key: 'player-idle',
+      frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+      frameRate: 8,
+      repeat: -1
+    });
+
+    // RUN animation - Row 1, frames 8-15
+    this.anims.create({
+      key: 'player-run',
+      frames: this.anims.generateFrameNumbers('player', { start: 8, end: 15 }),
+      frameRate: 12,
+      repeat: -1
+    });
+
+    // ROLL animation - Row 2, frames 16-23
+    this.anims.create({
+      key: 'player-roll',
+      frames: this.anims.generateFrameNumbers('player', { start: 16, end: 23 }),
+      frameRate: 15,
+      repeat: 0  // Play once
+    });
+
+    // HIT animation - Row 3, frames 24-26
+    this.anims.create({
+      key: 'player-hit',
+      frames: this.anims.generateFrameNumbers('player', { start: 24, end: 26 }),
+      frameRate: 10,
+      repeat: 0  // Play once
+    });
+
+    // DEATH animation - Row 4, frames 32-35
+    this.anims.create({
+      key: 'player-death',
+      frames: this.anims.generateFrameNumbers('player', { start: 32, end: 35 }),
+      frameRate: 8,
+      repeat: 0  // Play once
+    });
   }
 }

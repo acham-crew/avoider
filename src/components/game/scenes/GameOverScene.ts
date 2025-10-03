@@ -81,7 +81,22 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   private restartGame() {
+    // Reset game state to 'menu' first, then to 'playing'
+    const state = useGameStore.getState();
+    state.setStatus('menu');
+
+    // Stop this scene
     this.scene.stop();
-    this.scene.get('GameScene').scene.restart();
+
+    // Restart GameScene
+    const gameScene = this.scene.get('GameScene');
+    if (gameScene) {
+      gameScene.scene.restart();
+    }
+
+    // Set status to playing after a brief delay
+    setTimeout(() => {
+      state.setStatus('playing');
+    }, 100);
   }
 }

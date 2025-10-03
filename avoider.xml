@@ -1,0 +1,1731 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: node_modules/**, *.xml, .next/**, out/**, dist/**, build/**, .git/**, *.log, package-lock.json, yarn.lock
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.github/
+  workflows/
+    deploy.yml
+src/
+  app/
+    layout.tsx
+    page.tsx
+  components/
+    game/
+      objects/
+        Giwa.ts
+        Item.ts
+        Player.ts
+      scenes/
+        GameOverScene.ts
+        GameScene.ts
+        PreloaderScene.ts
+      utils/
+        ObjectPool.ts
+        SoundManager.ts
+      config.ts
+      PhaserGame.tsx
+    ui/
+      ScoreDisplay.tsx
+  lib/
+    web3/
+      wallet.ts
+  stores/
+    gameStore.ts
+.gitignore
+CLAUDE.md
+next.config.js
+package.json
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".github/workflows/deploy.yml">
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with Next.js
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'GIWA Dodge - Avoid the Falling Tiles',
+  description: 'A retro-style arcade game where you dodge falling Korean roof tiles',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ko">
+      <body style={{ margin: 0, padding: 0, overflow: 'hidden' }}>
+        {children}
+      </body>
+    </html>
+  )
+}
+</file>
+
+<file path="src/app/page.tsx">
+'use client';
+
+import dynamic from 'next/dynamic';
+import ScoreDisplay from '@/components/ui/ScoreDisplay';
+
+// Dynamically import PhaserGame to avoid SSR issues
+const PhaserGame = dynamic(() => import('@/components/game/PhaserGame'), {
+  ssr: false,
+});
+
+export default function Home() {
+  return (
+    <main style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <ScoreDisplay />
+      <PhaserGame />
+    </main>
+  );
+}
+</file>
+
+<file path="src/components/game/objects/Giwa.ts">
+import Phaser from 'phaser';
+
+/**
+ * Giwa (Korean roof tile) - the main falling obstacle
+ */
+export class Giwa extends Phaser.Physics.Arcade.Sprite {
+  private fallSpeed: number = 150;
+
+  constructor(scene: Phaser.Scene, x: number, y: number) {
+    super(scene, x, y, 'giwa');
+
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+
+    this.setActive(false);
+    this.setVisible(false);
+  }
+
+  /**
+   * Spawn the Giwa at a random X position at the top of the screen
+   */
+  public spawn(speed: number) {
+    const x = Phaser.Math.Between(30, this.scene.scale.width - 30);
+    const y = -20; // Start above the screen
+
+    this.setPosition(x, y);
+    this.setActive(true);
+    this.setVisible(true);
+    this.fallSpeed = speed;
+    this.setVelocityY(this.fallSpeed);
+  }
+
+  /**
+   * Update the Giwa's fall speed (for slow motion effect)
+   */
+  public setFallSpeed(speed: number) {
+    this.fallSpeed = speed;
+    this.setVelocityY(this.fallSpeed);
+  }
+
+  /**
+   * Deactivate the Giwa (return to pool)
+   */
+  public deactivate() {
+    this.setActive(false);
+    this.setVisible(false);
+    this.setVelocity(0, 0);
+  }
+
+  public update() {
+    // Deactivate if it goes off screen
+    if (this.y > this.scene.scale.height + 50) {
+      this.deactivate();
+    }
+  }
+}
+</file>
+
+<file path="src/components/game/objects/Item.ts">
+import Phaser from 'phaser';
+
+export type ItemType = 'chest' | 'shoes' | 'shield' | 'clock';
+
+/**
+ * Item - collectible power-ups and bonuses
+ */
+export class Item extends Phaser.Physics.Arcade.Sprite {
+  private fallSpeed: number = 150;
+  private itemType: ItemType = 'chest';
+
+  constructor(scene: Phaser.Scene, x: number, y: number) {
+    super(scene, x, y, 'item-chest');
+
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+
+    this.setActive(false);
+    this.setVisible(false);
+  }
+
+  /**
+   * Spawn an item at a random position
+   */
+  public spawn(speed: number, type: ItemType) {
+    const x = Phaser.Math.Between(30, this.scene.scale.width - 30);
+    const y = -20; // Start above the screen
+
+    this.itemType = type;
+    this.setTexture(`item-${type}`);
+    this.setPosition(x, y);
+    this.setActive(true);
+    this.setVisible(true);
+    this.fallSpeed = speed;
+    this.setVelocityY(this.fallSpeed);
+  }
+
+  /**
+   * Update the item's fall speed (for slow motion effect)
+   */
+  public setFallSpeed(speed: number) {
+    this.fallSpeed = speed;
+    this.setVelocityY(this.fallSpeed);
+  }
+
+  /**
+   * Get the type of this item
+   */
+  public getType(): ItemType {
+    return this.itemType;
+  }
+
+  /**
+   * Deactivate the item (return to pool)
+   */
+  public deactivate() {
+    this.setActive(false);
+    this.setVisible(false);
+    this.setVelocity(0, 0);
+  }
+
+  public update() {
+    // Deactivate if it goes off screen
+    if (this.y > this.scene.scale.height + 50) {
+      this.deactivate();
+    }
+  }
+}
+</file>
+
+<file path="src/components/game/objects/Player.ts">
+import Phaser from 'phaser';
+import { GAME_CONFIG } from '../config';
+
+export class Player extends Phaser.Physics.Arcade.Sprite {
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+  private moveLeft: boolean = false;
+  private moveRight: boolean = false;
+  private speedBoostActive: boolean = false;
+
+  constructor(scene: Phaser.Scene, x: number, y: number) {
+    super(scene, x, y, 'player');
+
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+
+    // Set up physics
+    this.setCollideWorldBounds(true);
+    this.setDrag(GAME_CONFIG.playerDrag, 0);
+    this.setMaxVelocity(GAME_CONFIG.playerSpeed, 0);
+
+    // Set up keyboard input
+    if (scene.input.keyboard) {
+      this.cursors = scene.input.keyboard.createCursorKeys();
+    }
+
+    // Set up touch input
+    scene.input.on('pointerdown', this.handlePointerDown, this);
+    scene.input.on('pointerup', this.handlePointerUp, this);
+    scene.input.on('pointermove', this.handlePointerMove, this);
+  }
+
+  private handlePointerDown(pointer: Phaser.Input.Pointer) {
+    const screenWidth = this.scene.scale.width;
+    if (pointer.x < screenWidth / 2) {
+      this.moveLeft = true;
+      this.moveRight = false;
+    } else {
+      this.moveRight = true;
+      this.moveLeft = false;
+    }
+  }
+
+  private handlePointerUp() {
+    this.moveLeft = false;
+    this.moveRight = false;
+  }
+
+  private handlePointerMove(pointer: Phaser.Input.Pointer) {
+    if (pointer.isDown) {
+      const screenWidth = this.scene.scale.width;
+      if (pointer.x < screenWidth / 2) {
+        this.moveLeft = true;
+        this.moveRight = false;
+      } else {
+        this.moveRight = true;
+        this.moveLeft = false;
+      }
+    }
+  }
+
+  public setSpeedBoost(active: boolean) {
+    this.speedBoostActive = active;
+    const maxSpeed = active ? GAME_CONFIG.playerSpeedBoosted : GAME_CONFIG.playerSpeed;
+    this.setMaxVelocity(maxSpeed, 0);
+  }
+
+  public update() {
+    // Handle keyboard input
+    if (this.cursors) {
+      if (this.cursors.left.isDown) {
+        this.setAccelerationX(-GAME_CONFIG.playerAcceleration);
+      } else if (this.cursors.right.isDown) {
+        this.setAccelerationX(GAME_CONFIG.playerAcceleration);
+      } else if (!this.moveLeft && !this.moveRight) {
+        this.setAccelerationX(0);
+      }
+    }
+
+    // Handle touch input
+    if (this.moveLeft) {
+      this.setAccelerationX(-GAME_CONFIG.playerAcceleration);
+    } else if (this.moveRight) {
+      this.setAccelerationX(GAME_CONFIG.playerAcceleration);
+    } else if (this.cursors && !this.cursors.left.isDown && !this.cursors.right.isDown) {
+      this.setAccelerationX(0);
+    }
+  }
+
+  public destroy(fromScene?: boolean) {
+    // Clean up event listeners
+    this.scene.input.off('pointerdown', this.handlePointerDown, this);
+    this.scene.input.off('pointerup', this.handlePointerUp, this);
+    this.scene.input.off('pointermove', this.handlePointerMove, this);
+    super.destroy(fromScene);
+  }
+}
+</file>
+
+<file path="src/components/game/scenes/GameOverScene.ts">
+import Phaser from 'phaser';
+import { useGameStore } from '@/stores/gameStore';
+
+/**
+ * GameOverScene - Displays game over screen
+ */
+export class GameOverScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'GameOverScene' });
+  }
+
+  create() {
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    const state = useGameStore.getState();
+
+    // Semi-transparent background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.7);
+    bg.fillRect(0, 0, width, height);
+
+    // Game Over text
+    const gameOverText = this.add.text(width / 2, height / 2 - 100, 'GAME OVER', {
+      font: 'bold 48px monospace',
+      color: '#ff0000'
+    });
+    gameOverText.setOrigin(0.5);
+
+    // Final score
+    const scoreText = this.add.text(
+      width / 2,
+      height / 2 - 20,
+      `Score: ${Math.floor(state.score)}`,
+      {
+        font: '32px monospace',
+        color: '#ffffff'
+      }
+    );
+    scoreText.setOrigin(0.5);
+
+    // High score
+    const highScoreText = this.add.text(
+      width / 2,
+      height / 2 + 30,
+      `High Score: ${Math.floor(state.highScore)}`,
+      {
+        font: '24px monospace',
+        color: '#ffff00'
+      }
+    );
+    highScoreText.setOrigin(0.5);
+
+    // Retry button
+    const retryButton = this.add.text(width / 2, height / 2 + 100, 'RETRY (R)', {
+      font: 'bold 28px monospace',
+      color: '#00ff00',
+      backgroundColor: '#222222',
+      padding: { x: 20, y: 10 }
+    });
+    retryButton.setOrigin(0.5);
+    retryButton.setInteractive({ useHandCursor: true });
+
+    // Button hover effect
+    retryButton.on('pointerover', () => {
+      retryButton.setStyle({ color: '#ffffff' });
+    });
+
+    retryButton.on('pointerout', () => {
+      retryButton.setStyle({ color: '#00ff00' });
+    });
+
+    // Retry on click or R key
+    retryButton.on('pointerdown', () => {
+      this.restartGame();
+    });
+
+    this.input.keyboard?.on('keydown-R', () => {
+      this.restartGame();
+    });
+  }
+
+  private restartGame() {
+    this.scene.stop();
+    this.scene.get('GameScene').scene.restart();
+  }
+}
+</file>
+
+<file path="src/components/game/scenes/GameScene.ts">
+import Phaser from 'phaser';
+import { Player } from '../objects/Player';
+import { GiwaPool, ItemPool } from '../utils/ObjectPool';
+import { GAME_CONFIG } from '../config';
+import { useGameStore } from '@/stores/gameStore';
+import { ItemType } from '../objects/Item';
+
+/**
+ * GameScene - Main gameplay scene
+ */
+export class GameScene extends Phaser.Scene {
+  private player?: Player;
+  private giwaPool?: GiwaPool;
+  private itemPool?: ItemPool;
+
+  private gameTime: number = 0; // Time in seconds
+  private lastSpawnTime: number = 0;
+  private currentSpawnRate: number = GAME_CONFIG.initialSpawnRate;
+  private currentFallSpeed: number = GAME_CONFIG.initialFallSpeed;
+
+  private isGameOver: boolean = false;
+  private slowMotionActive: boolean = false;
+
+  constructor() {
+    super({ key: 'GameScene' });
+  }
+
+  create() {
+    // Initialize game state
+    this.isGameOver = false;
+    this.gameTime = 0;
+    this.lastSpawnTime = 0;
+
+    useGameStore.getState().resetGame();
+
+    // Create player
+    this.player = new Player(
+      this,
+      this.scale.width / 2,
+      this.scale.height - 50
+    );
+
+    // Create object pools
+    this.giwaPool = new GiwaPool(this);
+    this.itemPool = new ItemPool(this);
+
+    // Set up collisions
+    this.setupCollisions();
+
+    // Set up retry key
+    this.input.keyboard?.on('keydown-R', () => {
+      if (this.isGameOver) {
+        this.restartGame();
+      }
+    });
+  }
+
+  private setupCollisions() {
+    if (!this.player || !this.giwaPool || !this.itemPool) return;
+
+    // Collision with Giwa tiles
+    this.physics.add.overlap(
+      this.player,
+      this.giwaPool.getActive(),
+      this.hitGiwa,
+      undefined,
+      this
+    );
+
+    // Collision with Items
+    this.physics.add.overlap(
+      this.player,
+      this.itemPool.getActive(),
+      this.collectItem,
+      undefined,
+      this
+    );
+  }
+
+  private hitGiwa() {
+    if (this.isGameOver) return;
+
+    const state = useGameStore.getState();
+
+    // Check if player has shield
+    if (state.hasShield) {
+      return; // Invincible, ignore collision
+    }
+
+    // Game over
+    this.isGameOver = true;
+    state.gameOver(state.score);
+
+    // Pause player
+    this.player?.setVelocity(0, 0);
+    this.player?.setAcceleration(0, 0);
+
+    // Show game over scene
+    this.scene.pause();
+    this.scene.launch('GameOverScene');
+  }
+
+  private collectItem(player: any, item: any) {
+    if (this.isGameOver) return;
+
+    const itemType = item.getType() as ItemType;
+    const state = useGameStore.getState();
+
+    // Deactivate the item
+    item.deactivate();
+
+    // Increment combo
+    state.incrementCombo();
+
+    // Check for combo bonus
+    if (state.combo > 0 && state.combo % GAME_CONFIG.comboThreshold === 0) {
+      state.addScore(GAME_CONFIG.comboBonus);
+    }
+
+    // Apply item effect
+    switch (itemType) {
+      case 'chest':
+        state.addScore(GAME_CONFIG.itemScores.chest);
+        break;
+
+      case 'shoes':
+        state.setSpeedBoost(true);
+        this.player?.setSpeedBoost(true);
+        this.time.delayedCall(GAME_CONFIG.speedBoostDuration, () => {
+          state.setSpeedBoost(false);
+          this.player?.setSpeedBoost(false);
+        });
+        break;
+
+      case 'shield':
+        state.setShield(true);
+        this.time.delayedCall(GAME_CONFIG.shieldDuration, () => {
+          state.setShield(false);
+        });
+        break;
+
+      case 'clock':
+        this.slowMotionActive = true;
+        state.setSlowMotion(true);
+        this.time.delayedCall(GAME_CONFIG.slowMotionDuration, () => {
+          this.slowMotionActive = false;
+          state.setSlowMotion(false);
+        });
+        break;
+    }
+  }
+
+  update(time: number, delta: number) {
+    if (this.isGameOver) return;
+
+    // Update game time
+    this.gameTime += delta / 1000;
+
+    // Update score based on time
+    const state = useGameStore.getState();
+    state.addScore(GAME_CONFIG.scorePerTick * delta / 1000);
+
+    // Update difficulty
+    this.currentSpawnRate = GAME_CONFIG.initialSpawnRate + GAME_CONFIG.spawnRateIncrease * this.gameTime;
+    this.currentFallSpeed = GAME_CONFIG.initialFallSpeed + GAME_CONFIG.fallSpeedIncrease * this.gameTime;
+
+    // Apply slow motion if active
+    const effectiveFallSpeed = this.slowMotionActive
+      ? this.currentFallSpeed * GAME_CONFIG.slowMotionFactor
+      : this.currentFallSpeed;
+
+    // Spawn objects
+    const spawnInterval = 1000 / this.currentSpawnRate; // milliseconds
+    if (time - this.lastSpawnTime > spawnInterval) {
+      this.spawnObject(effectiveFallSpeed);
+      this.lastSpawnTime = time;
+    }
+
+    // Update player
+    this.player?.update();
+
+    // Update pools
+    this.giwaPool?.update();
+    this.itemPool?.update();
+
+    // Re-setup collisions every frame (required for Phaser arcade physics with groups)
+    this.setupCollisions();
+  }
+
+  private spawnObject(fallSpeed: number) {
+    // Random chance to spawn item instead of giwa
+    const spawnItem = Math.random() < GAME_CONFIG.itemSpawnChance;
+
+    if (spawnItem) {
+      // Random item type
+      const itemTypes: ItemType[] = ['chest', 'shoes', 'shield', 'clock'];
+      const randomType = Phaser.Math.RND.pick(itemTypes);
+      this.itemPool?.spawn(fallSpeed, randomType);
+    } else {
+      this.giwaPool?.spawn(fallSpeed);
+    }
+  }
+
+  private restartGame() {
+    this.scene.stop('GameOverScene');
+    this.scene.restart();
+  }
+}
+</file>
+
+<file path="src/components/game/scenes/PreloaderScene.ts">
+import Phaser from 'phaser';
+
+/**
+ * PreloaderScene - Loads all game assets
+ */
+export class PreloaderScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'PreloaderScene' });
+  }
+
+  preload() {
+    // Create loading bar
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    const progressBar = this.add.graphics();
+    const progressBox = this.add.graphics();
+    progressBox.fillStyle(0x222222, 0.8);
+    progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
+
+    const loadingText = this.add.text(width / 2, height / 2 - 50, 'Loading...', {
+      font: '20px monospace',
+      color: '#ffffff'
+    });
+    loadingText.setOrigin(0.5, 0.5);
+
+    const percentText = this.add.text(width / 2, height / 2, '0%', {
+      font: '18px monospace',
+      color: '#ffffff'
+    });
+    percentText.setOrigin(0.5, 0.5);
+
+    // Update progress bar
+    this.load.on('progress', (value: number) => {
+      progressBar.clear();
+      progressBar.fillStyle(0xffffff, 1);
+      progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
+      percentText.setText(Math.floor(value * 100) + '%');
+    });
+
+    this.load.on('complete', () => {
+      progressBar.destroy();
+      progressBox.destroy();
+      loadingText.destroy();
+      percentText.destroy();
+    });
+
+    // Create simple graphics for game objects since we don't have image assets
+    this.createPlaceholderGraphics();
+  }
+
+  /**
+   * Create simple placeholder graphics for the game objects
+   */
+  private createPlaceholderGraphics() {
+    // Player - blue square
+    const playerGraphics = this.add.graphics();
+    playerGraphics.fillStyle(0x00bfff, 1);
+    playerGraphics.fillRect(0, 0, 40, 40);
+    playerGraphics.generateTexture('player', 40, 40);
+    playerGraphics.destroy();
+
+    // Giwa - red tile with "瓦" character
+    const giwaGraphics = this.add.graphics();
+    giwaGraphics.fillStyle(0xff4444, 1);
+    giwaGraphics.fillRoundedRect(0, 0, 50, 30, 4);
+    giwaGraphics.generateTexture('giwa', 50, 30);
+    giwaGraphics.destroy();
+
+    // Add "瓦" text to Giwa texture (optional enhancement)
+    const giwaText = this.add.text(25, 15, '瓦', {
+      font: '20px serif',
+      color: '#ffffff'
+    });
+    giwaText.setOrigin(0.5, 0.5);
+
+    // Item - Chest (yellow)
+    const chestGraphics = this.add.graphics();
+    chestGraphics.fillStyle(0xffd700, 1);
+    chestGraphics.fillRect(0, 0, 30, 30);
+    chestGraphics.lineStyle(2, 0x000000);
+    chestGraphics.strokeRect(0, 0, 30, 30);
+    chestGraphics.generateTexture('item-chest', 30, 30);
+    chestGraphics.destroy();
+
+    // Item - Shoes (green)
+    const shoesGraphics = this.add.graphics();
+    shoesGraphics.fillStyle(0x00ff00, 1);
+    shoesGraphics.fillEllipse(15, 15, 28, 28);
+    shoesGraphics.generateTexture('item-shoes', 30, 30);
+    shoesGraphics.destroy();
+
+    // Item - Shield (cyan)
+    const shieldGraphics = this.add.graphics();
+    shieldGraphics.fillStyle(0x00ffff, 1);
+    shieldGraphics.fillCircle(15, 15, 15);
+    shieldGraphics.generateTexture('item-shield', 30, 30);
+    shieldGraphics.destroy();
+
+    // Item - Clock (purple)
+    const clockGraphics = this.add.graphics();
+    clockGraphics.fillStyle(0xff00ff, 1);
+    clockGraphics.fillCircle(15, 15, 15);
+    clockGraphics.lineStyle(2, 0xffffff);
+    clockGraphics.strokeCircle(15, 15, 15);
+    clockGraphics.generateTexture('item-clock', 30, 30);
+    clockGraphics.destroy();
+  }
+
+  create() {
+    // Start the main game scene
+    this.scene.start('GameScene');
+  }
+}
+</file>
+
+<file path="src/components/game/utils/ObjectPool.ts">
+import Phaser from 'phaser';
+import { Giwa } from '../objects/Giwa';
+import { Item } from '../objects/Item';
+
+/**
+ * Object pool for Giwa tiles to prevent GC pauses
+ */
+export class GiwaPool {
+  private pool: Giwa[] = [];
+  private scene: Phaser.Scene;
+  private poolSize: number;
+
+  constructor(scene: Phaser.Scene, size: number = 50) {
+    this.scene = scene;
+    this.poolSize = size;
+    this.initialize();
+  }
+
+  private initialize() {
+    for (let i = 0; i < this.poolSize; i++) {
+      const giwa = new Giwa(this.scene, 0, 0);
+      this.pool.push(giwa);
+    }
+  }
+
+  /**
+   * Get an inactive Giwa from the pool, or create a new one if none available
+   */
+  public spawn(speed: number): Giwa | null {
+    const giwa = this.pool.find(g => !g.active);
+
+    if (giwa) {
+      giwa.spawn(speed);
+      return giwa;
+    }
+
+    // Pool exhausted, create a new one
+    const newGiwa = new Giwa(this.scene, 0, 0);
+    this.pool.push(newGiwa);
+    newGiwa.spawn(speed);
+    return newGiwa;
+  }
+
+  /**
+   * Get all active Giwas
+   */
+  public getActive(): Giwa[] {
+    return this.pool.filter(g => g.active);
+  }
+
+  /**
+   * Deactivate all Giwas
+   */
+  public clear() {
+    this.pool.forEach(g => g.deactivate());
+  }
+
+  /**
+   * Update all active Giwas
+   */
+  public update() {
+    this.pool.forEach(g => {
+      if (g.active) {
+        g.update();
+      }
+    });
+  }
+}
+
+/**
+ * Object pool for Items to prevent GC pauses
+ */
+export class ItemPool {
+  private pool: Item[] = [];
+  private scene: Phaser.Scene;
+  private poolSize: number;
+
+  constructor(scene: Phaser.Scene, size: number = 20) {
+    this.scene = scene;
+    this.poolSize = size;
+    this.initialize();
+  }
+
+  private initialize() {
+    for (let i = 0; i < this.poolSize; i++) {
+      const item = new Item(this.scene, 0, 0);
+      this.pool.push(item);
+    }
+  }
+
+  /**
+   * Get an inactive Item from the pool, or create a new one if none available
+   */
+  public spawn(speed: number, type: 'chest' | 'shoes' | 'shield' | 'clock'): Item | null {
+    const item = this.pool.find(i => !i.active);
+
+    if (item) {
+      item.spawn(speed, type);
+      return item;
+    }
+
+    // Pool exhausted, create a new one
+    const newItem = new Item(this.scene, 0, 0);
+    this.pool.push(newItem);
+    newItem.spawn(speed, type);
+    return newItem;
+  }
+
+  /**
+   * Get all active Items
+   */
+  public getActive(): Item[] {
+    return this.pool.filter(i => i.active);
+  }
+
+  /**
+   * Deactivate all Items
+   */
+  public clear() {
+    this.pool.forEach(i => i.deactivate());
+  }
+
+  /**
+   * Update all active Items
+   */
+  public update() {
+    this.pool.forEach(i => {
+      if (i.active) {
+        i.update();
+      }
+    });
+  }
+}
+</file>
+
+<file path="src/components/game/utils/SoundManager.ts">
+/**
+ * SoundManager - Handles game sound effects
+ *
+ * This is a placeholder implementation. In a production game,
+ * you would load actual audio files and use Phaser's sound system.
+ */
+export class SoundManager {
+  private scene: Phaser.Scene;
+  private enabled: boolean = true;
+
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+  }
+
+  /**
+   * Play sound when player gets hit
+   */
+  playHitSound() {
+    if (!this.enabled) return;
+    console.log('[Sound] Hit sound played');
+    // Placeholder: In production, use this.scene.sound.play('hit')
+  }
+
+  /**
+   * Play sound when collecting an item
+   */
+  playCollectSound() {
+    if (!this.enabled) return;
+    console.log('[Sound] Collect sound played');
+    // Placeholder: In production, use this.scene.sound.play('collect')
+  }
+
+  /**
+   * Play sound when game starts
+   */
+  playStartSound() {
+    if (!this.enabled) return;
+    console.log('[Sound] Start sound played');
+    // Placeholder: In production, use this.scene.sound.play('start')
+  }
+
+  /**
+   * Play sound when game is over
+   */
+  playGameOverSound() {
+    if (!this.enabled) return;
+    console.log('[Sound] Game over sound played');
+    // Placeholder: In production, use this.scene.sound.play('gameover')
+  }
+
+  /**
+   * Enable or disable sound
+   */
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+  }
+
+  /**
+   * Check if sound is enabled
+   */
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+}
+</file>
+
+<file path="src/components/game/config.ts">
+import Phaser from 'phaser';
+
+export const GAME_CONFIG = {
+  // Canvas dimensions
+  width: 800,
+  height: 600,
+
+  // Physics
+  gravity: 0,
+
+  // Player
+  playerSpeed: 300,
+  playerSpeedBoosted: 450,
+  playerAcceleration: 1200,
+  playerDrag: 800,
+
+  // Obstacles
+  initialSpawnRate: 1.0, // objects per second
+  initialFallSpeed: 150, // pixels per second
+  spawnRateIncrease: 0.05, // per second
+  fallSpeedIncrease: 3, // per second
+
+  // Items
+  itemSpawnChance: 0.2, // 20% chance of item instead of tile
+  itemScores: {
+    chest: 500,
+  },
+
+  // Power-up durations (milliseconds)
+  shieldDuration: 2000,
+  speedBoostDuration: 7000,
+  slowMotionDuration: 3000,
+
+  // Slow motion effect
+  slowMotionFactor: 0.8, // 20% slower
+
+  // Scoring
+  scorePerTick: 10, // points per game tick (at 60Hz, this is ~600 points/sec)
+  comboThreshold: 3,
+  comboBonus: 200,
+
+  // Patterns
+  patternInterval: 20000, // Change pattern every 20 seconds
+};
+
+export const getPhaserConfig = (parent: string): Phaser.Types.Core.GameConfig => ({
+  type: Phaser.AUTO,
+  parent,
+  width: GAME_CONFIG.width,
+  height: GAME_CONFIG.height,
+  backgroundColor: '#000000',
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { x: 0, y: GAME_CONFIG.gravity },
+      debug: false,
+    },
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  // Scenes will be added when initializing the game
+  scene: [],
+});
+</file>
+
+<file path="src/components/game/PhaserGame.tsx">
+'use client';
+
+import { useEffect, useRef } from 'react';
+import Phaser from 'phaser';
+import { getPhaserConfig } from './config';
+import { PreloaderScene } from './scenes/PreloaderScene';
+import { GameScene } from './scenes/GameScene';
+import { GameOverScene } from './scenes/GameOverScene';
+
+/**
+ * PhaserGame - React wrapper component for Phaser game
+ */
+export default function PhaserGame() {
+  const gameRef = useRef<Phaser.Game | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Prevent multiple game instances
+    if (gameRef.current) return;
+
+    // Initialize Phaser game
+    const config = getPhaserConfig('game-container');
+    config.scene = [PreloaderScene, GameScene, GameOverScene];
+
+    const game = new Phaser.Game(config);
+    gameRef.current = game;
+
+    // Cleanup on unmount
+    return () => {
+      if (gameRef.current) {
+        gameRef.current.destroy(true);
+        gameRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      id="game-container"
+      style={{
+        width: '100%',
+        height: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000000',
+      }}
+    />
+  );
+}
+</file>
+
+<file path="src/components/ui/ScoreDisplay.tsx">
+'use client';
+
+import { useGameStore } from '@/stores/gameStore';
+
+/**
+ * ScoreDisplay - Shows current score and active power-ups
+ */
+export default function ScoreDisplay() {
+  const { score, combo, hasShield, hasSpeedBoost, hasSlowMotion } = useGameStore();
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: '20px',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+        color: 'white',
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        zIndex: 100,
+        pointerEvents: 'none',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+            Score: {Math.floor(score)}
+          </div>
+          {combo > 0 && (
+            <div style={{ fontSize: '16px', color: '#ffff00' }}>
+              Combo: {combo}x
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', fontSize: '14px' }}>
+          {hasShield && (
+            <div
+              style={{
+                padding: '5px 10px',
+                background: '#00ffff',
+                color: '#000',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+              }}
+            >
+              SHIELD
+            </div>
+          )}
+          {hasSpeedBoost && (
+            <div
+              style={{
+                padding: '5px 10px',
+                background: '#00ff00',
+                color: '#000',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+              }}
+            >
+              SPEED
+            </div>
+          )}
+          {hasSlowMotion && (
+            <div
+              style={{
+                padding: '5px 10px',
+                background: '#ff00ff',
+                color: '#000',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+              }}
+            >
+              SLOW-MO
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/lib/web3/wallet.ts">
+/**
+ * Web3 Integration Module (Placeholder)
+ *
+ * This module provides placeholder functions for future Web3 integration.
+ * These functions are stubs and should be implemented when integrating
+ * with an actual blockchain/wallet provider.
+ */
+
+export interface WalletConnection {
+  address: string;
+  isConnected: boolean;
+}
+
+/**
+ * Connect to user's Web3 wallet
+ * @returns Promise with wallet connection info
+ */
+export async function connectWallet(): Promise<WalletConnection> {
+  console.log('[Web3] connectWallet called (placeholder)');
+
+  // Simulate async operation
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        address: '0x0000000000000000000000000000000000000000',
+        isConnected: false,
+      });
+    }, 100);
+  });
+}
+
+/**
+ * Sign the game score with user's wallet
+ * @param score - The score to sign
+ * @returns Promise with signature
+ */
+export async function signScore(score: number): Promise<string> {
+  console.log(`[Web3] signScore called with score: ${score} (placeholder)`);
+
+  // Simulate async operation
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`0x_placeholder_signature_for_score_${score}`);
+    }, 100);
+  });
+}
+
+/**
+ * Disconnect from user's wallet
+ */
+export function disconnectWallet(): void {
+  console.log('[Web3] disconnectWallet called (placeholder)');
+}
+
+/**
+ * Check if wallet is connected
+ * @returns boolean indicating connection status
+ */
+export function isWalletConnected(): boolean {
+  console.log('[Web3] isWalletConnected called (placeholder)');
+  return false;
+}
+</file>
+
+<file path="src/stores/gameStore.ts">
+import { create } from 'zustand';
+
+export type GameStatus = 'menu' | 'playing' | 'gameover';
+
+export type ItemType = 'chest' | 'shoes' | 'shield' | 'clock';
+
+interface GameState {
+  // Game status
+  status: GameStatus;
+  score: number;
+  highScore: number;
+  combo: number;
+
+  // Active power-ups
+  hasShield: boolean;
+  hasSpeedBoost: boolean;
+  hasSlowMotion: boolean;
+
+  // Actions
+  setStatus: (status: GameStatus) => void;
+  setScore: (score: number) => void;
+  addScore: (points: number) => void;
+  incrementCombo: () => void;
+  resetCombo: () => void;
+  setShield: (active: boolean) => void;
+  setSpeedBoost: (active: boolean) => void;
+  setSlowMotion: (active: boolean) => void;
+  resetGame: () => void;
+  gameOver: (finalScore: number) => void;
+}
+
+export const useGameStore = create<GameState>((set) => ({
+  // Initial state
+  status: 'menu',
+  score: 0,
+  highScore: 0,
+  combo: 0,
+  hasShield: false,
+  hasSpeedBoost: false,
+  hasSlowMotion: false,
+
+  // Actions
+  setStatus: (status) => set({ status }),
+
+  setScore: (score) => set({ score }),
+
+  addScore: (points) => set((state) => ({
+    score: state.score + points
+  })),
+
+  incrementCombo: () => set((state) => ({
+    combo: state.combo + 1
+  })),
+
+  resetCombo: () => set({ combo: 0 }),
+
+  setShield: (active) => set({ hasShield: active }),
+
+  setSpeedBoost: (active) => set({ hasSpeedBoost: active }),
+
+  setSlowMotion: (active) => set({ hasSlowMotion: active }),
+
+  resetGame: () => set({
+    status: 'playing',
+    score: 0,
+    combo: 0,
+    hasShield: false,
+    hasSpeedBoost: false,
+    hasSlowMotion: false,
+  }),
+
+  gameOver: (finalScore) => set((state) => ({
+    status: 'gameover',
+    score: finalScore,
+    highScore: Math.max(state.highScore, finalScore),
+    combo: 0,
+    hasShield: false,
+    hasSpeedBoost: false,
+    hasSlowMotion: false,
+  })),
+}));
+</file>
+
+<file path=".gitignore">
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="CLAUDE.md">
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**GIWA Dodge** is a retro-style 2D arcade web game where players dodge falling Korean roof tiles (Giwa - 瓦).
+
+## Technology Stack
+
+- **Game Engine:** Phaser 3
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript
+- **State Management:** Zustand (for UI state)
+- **Deployment:** Vercel
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Run linter
+npm run lint
+
+# Run type checking
+npm run type-check
+```
+
+## Project Structure
+
+```
+/src
+  /app                          # Next.js App Router pages
+    layout.tsx                  # Root layout
+    page.tsx                    # Main game page with canvas
+  /components
+    /game                       # Phaser 3 game code
+      /scenes                   # Game scenes (state machines)
+        PreloaderScene.ts       # Asset loading
+        GameScene.ts            # Main gameplay
+        UIScene.ts              # HUD overlay
+        GameOverScene.ts        # End screen
+      /objects                  # Game entities
+        Player.ts               # Player character with acceleration-based movement
+        Giwa.ts                 # Falling tile obstacle
+        Item.ts                 # Collectible items (Chest, Shoes, Shield, Clock)
+      /utils                    # Helper functions
+    /ui                         # React UI components
+      StartMenu.tsx             # Landing page with "Start Game"
+      ScoreDisplay.tsx          # Top-of-screen score counter
+      GameOver.tsx              # Game over overlay with retry
+  /lib
+    /web3                       # Web3 integration (placeholder)
+      wallet.ts                 # connectWallet(), signScore() stubs
+  /stores                       # Zustand state management
+    gameStore.ts                # Game state (score, status, etc.)
+```
+
+## Key Game Mechanics
+
+### Player Controls
+- **Desktop:** Arrow keys (← →) for movement, R to retry
+- **Mobile:** Touch left/right half of screen to move
+
+### Game Objects
+- **Player:** Acceleration-based movement with max speed, clamped at screen edges
+- **Giwa Tiles:** Main obstacles that spawn at top and fall straight down
+- **Items (4 types):**
+  - Treasure Chest: +500 bonus score
+  - Shoes: Speed boost for 6-8s (non-stacking)
+  - Shield: 2s invincibility
+  - Clock: 20% slowdown for 3s
+
+### Scoring
+- Base: 10 points per 0.1s survival time
+- Bonus: Treasure chest items
+- Combo: Extra points for 3 items collected in a row without getting hit
+
+### Difficulty Progression
+Time-based scaling where `t` = elapsed seconds:
+- Spawn rate: `initialRate + 0.05 * t` objects/second
+- Fall speed: `initialSpeed + 3 * t` pixels/second
+- New falling patterns introduced every 20 seconds
+
+## Technical Requirements
+
+### Performance
+- **Object Pooling:** Required for Giwa tiles and items to prevent GC pauses
+- **Fixed Timestep:** 60Hz game loop for consistent physics
+
+### UX Flow
+1. Landing page with "Start Game" button
+2. Game starts immediately, score visible at top
+3. Game over shows final score and "Retry" button over paused scene
+
+## Architecture Notes
+
+- Phaser scenes handle game logic and rendering
+- React components provide UI overlay (non-game elements)
+- Zustand bridges state between Phaser and React
+- Web3 module is isolated and should not couple with core game logic
+- Use simple retro 2D art style (pixel art or clean vectors)
+- Giwa tiles can be represented with `瓦` character or geometric shape
+</file>
+
+<file path="package.json">
+{
+  "name": "giwa-dodge",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "phaser": "^3.80.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.4.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0"
+  }
+}
+</file>
+
+<file path="README.md">
+# GIWA Dodge (기와 피하기)
+
+A retro-style 2D arcade web game where you dodge falling Korean roof tiles (Giwa - 瓦).
+
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Game Engine:** Phaser 3
+- **State Management:** Zustand
+- **Deployment:** Vercel
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to play the game.
+
+### Build for Production
+
+```bash
+# Build the project
+npm run build
+
+# Start production server
+npm start
+```
+
+## How to Play
+
+### Controls
+
+- **Desktop:** Use `←` and `→` arrow keys to move left and right. Press `R` to retry after game over.
+- **Mobile:** Tap/hold the left half of the screen to move left, right half to move right.
+
+### Game Mechanics
+
+- Dodge falling Giwa tiles (red rectangles with 瓦 character)
+- Collect items to gain power-ups and score bonuses
+- Survive as long as possible as the difficulty increases
+
+### Items
+
+- 🟡 **Treasure Chest (Yellow):** +500 bonus score
+- 🟢 **Shoes (Green):** Speed boost for 6-8 seconds
+- 🔵 **Shield (Cyan):** 2 seconds of invincibility
+- 🟣 **Clock (Purple):** Slows down all falling objects for 3 seconds
+
+### Scoring
+
+- **Base Score:** Increases with survival time (10 points per 0.1 second)
+- **Item Bonuses:** Collect treasure chests for bonus points
+- **Combo Bonus:** Collect 3 items in a row without getting hit for extra points
+
+## Project Structure
+
+```
+/src
+  /app                  # Next.js App Router pages
+  /components
+    /game              # Phaser 3 game code
+      /scenes          # Game scenes (Preloader, Game, GameOver)
+      /objects         # Game entities (Player, Giwa, Item)
+      /utils           # Helper functions (ObjectPool, SoundManager)
+    /ui                # React UI components
+  /stores              # Zustand state management
+  /lib
+    /web3              # Web3 integration (placeholder)
+```
+
+## Development Notes
+
+- The game uses **Object Pooling** for optimal performance
+- Fixed timestep game loop runs at 60Hz for consistent physics
+- Web3 module contains placeholder functions for future blockchain integration
+
+## Deployment
+
+Deploy to Vercel with one click:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/giwa-dodge)
+
+## License
+
+MIT
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="next.config.js">
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export',
+  basePath: '/avoider',
+  images: {
+    unoptimized: true,
+  },
+  reactStrictMode: true,
+  webpack: (config) => {
+    // Phaser requires special webpack configuration for proper bundling
+    config.resolve.alias = {
+      ...config.resolve.alias,
+    };
+    return config;
+  },
+}
+
+module.exports = nextConfig
+</file>
+
+</files>
+
+
+
+해당프로젝트를 refactoring 하여 web3 느낌의 사이트 로 변경하고싶어
+- 전체적으로 Dot 느낌의 UI 를 사용하고싶어.
+- Header 에는 지갑 연결 버튼이 있으면 좋겠어. 
+- 게임은 현재는 페이지 전체를 사용하는데 전체 화면보다는 화면 왼쪽에는 게임 화면, 오른쪽 영역에는 게임에 사용하는 캐릭터 이미지가 있으면 좋겠어. 추후 코스튬으로 캐릭터를 꾸밀 수 있도록 고도화 할 예정이야. 
+- 게임 왼쪽에는 또 자신의 최고 기록과 히스토리내용이 보였으면 좋겠어. 
+- 게임의 점수가 point 가 되어서 claim 받을 수 있도록 하고싶어. 
+- 지갑 연결을 하지않으면 Demo 버전으로 실행되며 왼쪽은 로그인을 유도하는 UI 로 보여주고 로그인하면 제대로 보여주면 될거같아. 

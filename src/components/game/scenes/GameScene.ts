@@ -31,7 +31,13 @@ export class GameScene extends Phaser.Scene {
     this.gameTime = 0;
     this.lastSpawnTime = 0;
 
-    useGameStore.getState().resetGame();
+    // Reset game state without changing status (user must click Start button)
+    const state = useGameStore.getState();
+    state.setScore(0);
+    state.resetCombo();
+    state.setShield(false);
+    state.setSpeedBoost(false);
+    state.setSlowMotion(false);
 
     // Create player
     this.player = new Player(
@@ -151,13 +157,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    const state = useGameStore.getState();
+
+    // Don't update game logic if not playing
+    if (state.status !== 'playing') return;
+
     if (this.isGameOver) return;
 
     // Update game time
     this.gameTime += delta / 1000;
 
     // Update score based on time
-    const state = useGameStore.getState();
     state.addScore(GAME_CONFIG.scorePerTick * delta / 1000);
 
     // Update difficulty

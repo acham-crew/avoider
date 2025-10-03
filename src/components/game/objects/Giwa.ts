@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_CONFIG } from '../config';
 
 /**
  * Giwa (Korean roof tile) - the main falling obstacle
@@ -11,6 +12,18 @@ export class Giwa extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
+
+    // Adjust hitbox using config multiplier
+    if (this.body) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const originalWidth = this.width;
+      const originalHeight = this.height;
+      const multiplier = GAME_CONFIG.hitboxMultiplier.giwa;
+      const hitboxWidth = originalWidth * multiplier;
+      const hitboxHeight = originalHeight * multiplier;
+      body.setSize(hitboxWidth, hitboxHeight);
+      body.setOffset((originalWidth - hitboxWidth) / 2, (originalHeight - hitboxHeight) / 2);
+    }
 
     this.setActive(false);
     this.setVisible(false);

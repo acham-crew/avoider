@@ -8,6 +8,27 @@ export const GAME_CONFIG = {
   // Physics
   gravity: 0,
 
+  // Sprite sizes (original sprite size from assets)
+  spriteSize: {
+    player: 32,      // Original player sprite is 32x32
+    giwa: 50,        // Giwa tile width (height is auto from sprite)
+    item: 30,        // Item sprite size
+  },
+
+  // Display sizes (how big sprites appear on screen)
+  displaySize: {
+    player: 40,      // Player display size (original = 32, use 40 for slight upscale)
+    giwa: 50,        // Giwa display size
+    item: 30,        // Item display size
+  },
+
+  // Hitbox size multipliers (percentage of display size)
+  hitboxMultiplier: {
+    player: 0.6,     // Player hitbox is 60% of display size (more forgiving)
+    giwa: 0.7,       // Giwa hitbox is 70% of display size
+    item: 0.8,       // Item hitbox is 80% of display size (easier to collect)
+  },
+
   // Player
   playerSpeed: 300,
   playerSpeedBoosted: 450,

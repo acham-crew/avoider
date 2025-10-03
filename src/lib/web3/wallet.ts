@@ -21,11 +21,13 @@ export async function connectWallet(): Promise<WalletConnection> {
   // Simulate async operation
   return new Promise((resolve) => {
     setTimeout(() => {
+      // Generate a random dummy wallet address
+      const dummyAddress = `0x${Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
       resolve({
-        address: '0x0000000000000000000000000000000000000000',
-        isConnected: false,
+        address: dummyAddress,
+        isConnected: true,
       });
-    }, 100);
+    }, 500);
   });
 }
 
