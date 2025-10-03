@@ -16,9 +16,10 @@ export default function CharacterPreview() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Load sprite sheet
+    // Load sprite sheet with basePath for GitHub Pages
+    const basePath = process.env.NODE_ENV === 'production' ? '/avoider' : '';
     const img = new Image();
-    img.src = '/player-spritesheet.png';
+    img.src = `${basePath}/player-spritesheet.png`;
 
     img.onload = () => {
       imageRef.current = img;
