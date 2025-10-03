@@ -42,9 +42,9 @@ export const GAME_CONFIG = {
   fallSpeedIncrease: 3, // per second
 
   // Items
-  itemSpawnChance: 0.2, // 20% chance of item instead of tile
+  itemSpawnChance: 0.15, // 15% chance of item instead of tile
   itemScores: {
-    chest: 500,
+    chest: 20, // Chest gives 20 points
   },
 
   // Power-up durations (milliseconds)
@@ -56,9 +56,13 @@ export const GAME_CONFIG = {
   slowMotionFactor: 0.8, // 20% slower
 
   // Scoring
-  scorePerTick: 10, // points per game tick (at 60Hz, this is ~600 points/sec)
-  comboThreshold: 3,
-  comboBonus: 200,
+  scorePerTick: 0.1, // Base score: 0.1 point per tick (6 points/sec at 60Hz)
+
+  // Near-miss combo system
+  nearMissDistance: 60, // Distance threshold for near-miss detection (pixels)
+  nearMissBaseScore: 5, // Base score for a near-miss
+  nearMissComboMultiplier: 2, // Score multiplier per combo level
+  nearMissComboWindow: 2000, // 2 seconds to maintain combo (milliseconds)
 
   // Patterns
   patternInterval: 20000, // Change pattern every 20 seconds
